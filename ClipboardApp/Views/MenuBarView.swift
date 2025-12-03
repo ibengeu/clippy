@@ -3,106 +3,179 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject private var historyManager: ClipboardHistoryManager
     @EnvironmentObject private var monitor: ClipboardMonitor
+    @StateObject private var menuState = MenuBarState()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with app name
             HStack {
-                Text("Recent Items")
-                    .font(.headline)
+                Image(systemName: "doc.on.clipboard")
+                    .foregroundColor(.swiftClipPrimary)
+                Text("SwiftClip")
+                    .swiftClipBodyMedium()
+                    .foregroundColor(.swiftClipPrimary)
                 Spacer()
                 if monitor.isMonitoring {
                     Circle()
-                        .fill(Color.green)
+                        .fill(Color.swiftClipAccent)
                         .frame(width: 8, height: 8)
                 }
             }
-            .padding(.bottom, 4)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.swiftClipPrimary.opacity(0.05))
 
             Divider()
 
-            if historyManager.items.isEmpty {
-                Text("No items")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(historyManager.items.prefix(10)) { item in
+            // Main menu options
+            VStack(spacing: 2) {
+                Button(action: { openMainWindow() }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "rectangle.on.rectangle")
+                            .foregroundColor(.swiftClipPrimary)
+                            .frame(width: 20)
+                        Text("Show Clipboard")
+                            .swiftClipBody()
+                        Spacer()
+                        Text("⌥V")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .padding(.leading, 32)
+
+                // Pinned Items Submenu
+                let pinnedItems = historyManager.items.filter { $0.isPinned }
+                if !pinnedItems.isEmpty {
+                    Menu {
+                        ForEach(pinnedItems.prefix(5)) { item in
                             Button(action: {
                                 copyToClipboard(item.content)
                             }) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.content.prefix(50))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                    Text(item.timestamp.formatted(date: .omitted, time: .shortened))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 4)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .help("Click to copy")
-
-                            if item.id != historyManager.items.prefix(10).last?.id {
-                                Divider()
+                                Text(item.content.prefix(40))
+                                    .lineLimit(1)
                             }
                         }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "pin.fill")
+                                .foregroundColor(.swiftClipAccent)
+                                .frame(width: 20)
+                            Text("Pinned Items")
+                                .swiftClipBody()
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .swiftClipCaption()
+                                .foregroundColor(.swiftClipTextSecondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+
+                    Divider()
+                        .padding(.leading, 32)
                 }
-                .frame(maxHeight: 300)
-            }
 
-            Divider()
-
-            VStack(spacing: 4) {
-                Button(action: { openMainWindow() }) {
-                    HStack {
-                        Image(systemName: "square.and.pencil")
-                        Text("Open Full Window")
+                // Clear History
+                Button(action: {
+                    menuState.showClearConfirmation()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                            .frame(width: 20)
+                        Text("Clear History")
+                            .swiftClipBody()
+                            .foregroundColor(.red)
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                 }
-
-                Button(action: { openSettingsWindow() }) {
-                    HStack {
-                        Image(systemName: "gear")
-                        Text("Settings...")
+                .buttonStyle(.plain)
+                .alert("Clear Clipboard History?", isPresented: $menuState.isShowingClearConfirmation) {
+                    Button("Cancel", role: .cancel) {
+                        menuState.dismissClearConfirmation()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Clear", role: .destructive) {
+                        historyManager.clearHistory()
+                        menuState.dismissClearConfirmation()
+                    }
+                } message: {
+                    Text("This will delete all clipboard items. Pinned items will also be removed.")
                 }
 
                 Divider()
 
-                Button(action: {
-                    monitor.isMonitoring ? monitor.stopMonitoring() : monitor.startMonitoring()
-                }) {
-                    HStack {
-                        Image(systemName: monitor.isMonitoring ? "pause.circle" : "play.circle")
-                        Text(monitor.isMonitoring ? "Stop Monitoring" : "Start Monitoring")
+                // Privacy Settings
+                Button(action: { openSettingsWindow(tab: "Privacy") }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hand.raised.shield")
+                            .foregroundColor(.swiftClipPrimary)
+                            .frame(width: 20)
+                        Text("Privacy Settings...")
+                            .swiftClipBody()
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
 
-                Button(action: {
-                    historyManager.clearHistory()
-                }) {
-                    HStack {
-                        Image(systemName: "trash")
-                        Text("Clear History")
+                // Preferences
+                Button(action: { openSettingsWindow() }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "gear")
+                            .foregroundColor(.swiftClipPrimary)
+                            .frame(width: 20)
+                        Text("Preferences...")
+                            .swiftClipBody()
+                        Spacer()
+                        Text("⌘,")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundColor(.red)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                // Quit SwiftClip
+                Button(action: {
+                    NSApplication.shared.terminate(nil)
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "power")
+                            .foregroundColor(.swiftClipTextSecondary)
+                            .frame(width: 20)
+                        Text("Quit SwiftClip")
+                            .swiftClipBody()
+                        Spacer()
+                        Text("⌘Q")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .font(.caption)
         }
-        .padding()
-        .frame(width: 280)
+        .frame(width: 260)
     }
 
     private func copyToClipboard(_ text: String) {
@@ -117,7 +190,7 @@ struct MenuBarView: View {
         }
     }
 
-    private func openSettingsWindow() {
+    private func openSettingsWindow(tab: String? = nil) {
         // Find and show the settings window
         if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title == "SwiftClip Settings" }) {
             settingsWindow.makeKeyAndOrderFront(nil)
@@ -126,6 +199,9 @@ struct MenuBarView: View {
             NSApplication.shared.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         }
         NSApp.activate(ignoringOtherApps: true)
+
+        // Note: Tab selection would require passing state to SettingsView
+        // For now, opens to General tab
     }
 }
 
