@@ -14,8 +14,18 @@ class ClipboardHistoryManager: ObservableObject {
         loadItems()
     }
 
-    func addItem(_ item: ClipboardItem) {
-        items.insert(item, at: 0)
+    func addItem(_ item: ClipboardItem, autoDetectSensitive: Bool = false) {
+        var newItem = item
+
+        // Auto-detect sensitive content if enabled
+        if autoDetectSensitive, let sourceApp = item.sourceApp {
+            let sensitiveManager = SensitiveAppManager()
+            if sensitiveManager.isSensitiveApp(bundleId: sourceApp) {
+                newItem.isSensitive = true
+            }
+        }
+
+        items.insert(newItem, at: 0)
 
         // Apply FIFO removal if limit exceeded
         enforceHistoryLimit()
@@ -49,7 +59,8 @@ class ClipboardHistoryManager: ObservableObject {
 
     func search(for query: String) -> [ClipboardItem] {
         guard !query.isEmpty else { return items }
-        return items.filter { $0.content.localizedCaseInsensitiveContains(query) }
+        // Exclude sensitive items from regular search
+        return items.filter { !$0.isSensitive && $0.content.localizedCaseInsensitiveContains(query) }
     }
 
     func getFavorites() -> [ClipboardItem] {
@@ -94,8 +105,28 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
 
+    func markAsNotSensitive(for id: UUID) {
+        if let index = items.firstIndex(where: { $0.id == id }) {
+            items[index].isSensitive = false
+            saveItems()
+        }
+    }
+
     func getRedactedContent(for item: ClipboardItem) -> String {
         return item.isSensitive ? "••••••••" : item.content
+    }
+
+    func getDisplayContent(for item: ClipboardItem) -> String {
+        return item.isSensitive ? "•••••••• (sensitive)" : item.content
+    }
+
+    func getActualContent(for item: ClipboardItem) -> String {
+        return item.content
+    }
+
+    func searchIncludingSensitive(for query: String) -> [ClipboardItem] {
+        guard !query.isEmpty else { return items }
+        return items.filter { $0.content.localizedCaseInsensitiveContains(query) }
     }
 
     // MARK: - Sorting Methods

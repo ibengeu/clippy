@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var settings: SettingsManager
+    @StateObject private var sensitiveAppManager = SensitiveAppManager()
 
     var body: some View {
         TabView {
@@ -16,8 +17,14 @@ struct SettingsView: View {
                     Label("Appearance", systemImage: "paintbrush")
                 }
                 .tag(1)
+
+            PrivacySettingsTab(sensitiveAppManager: sensitiveAppManager)
+                .tabItem {
+                    Label("Privacy", systemImage: "lock.shield")
+                }
+                .tag(2)
         }
-        .frame(width: 500, height: 400)
+        .frame(width: 500, height: 450)
     }
 }
 
@@ -119,6 +126,113 @@ struct AppearanceSettingsTab: View {
                         .tint(.swiftClipPrimary)
 
                         Text("Where the clipboard window appears on screen")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+                .padding()
+            }
+
+            Spacer()
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - Privacy Settings Tab
+
+struct PrivacySettingsTab: View {
+    @ObservedObject var sensitiveAppManager: SensitiveAppManager
+    @State private var newAppBundleId: String = ""
+
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Auto-detect toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Auto-detect sensitive apps", isOn: $sensitiveAppManager.isAutoDetectEnabled)
+                            .swiftClipBody()
+                            .tint(.swiftClipPrimary)
+
+                        Text("Automatically detect clipboard content from password managers and sensitive apps")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
+                    }
+                    .padding(.vertical, 8)
+
+                    Divider()
+
+                    // Excluded apps list
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Excluded Apps:")
+                            .swiftClipBody()
+                            .fontWeight(.semibold)
+
+                        let excludedApps = sensitiveAppManager.getUserExcludedApps()
+
+                        if excludedApps.isEmpty {
+                            Text("No custom excluded apps")
+                                .swiftClipCaption()
+                                .foregroundColor(.swiftClipTextSecondary)
+                                .padding(.vertical, 4)
+                        } else {
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    ForEach(excludedApps, id: \.self) { bundleId in
+                                        HStack {
+                                            Text(bundleId)
+                                                .swiftClipCaption()
+                                            Spacer()
+                                            Button(action: {
+                                                sensitiveAppManager.removeExcludedApp(bundleId)
+                                            }) {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .foregroundColor(.red)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 100)
+                        }
+
+                        // Add new app
+                        HStack {
+                            TextField("App Bundle ID (e.g., com.example.app)", text: $newAppBundleId)
+                                .textFieldStyle(.roundedBorder)
+                                .swiftClipCaption()
+
+                            Button(action: {
+                                guard !newAppBundleId.isEmpty else { return }
+                                sensitiveAppManager.addExcludedApp(newAppBundleId)
+                                newAppBundleId = ""
+                            }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.swiftClipPrimary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(newAppBundleId.isEmpty)
+                        }
+
+                        Text("Add custom apps to exclude from clipboard history")
+                            .swiftClipCaption()
+                            .foregroundColor(.swiftClipTextSecondary)
+                    }
+                    .padding(.vertical, 8)
+
+                    Divider()
+
+                    // Default sensitive apps info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Default Sensitive Apps:")
+                            .swiftClipBody()
+                            .fontWeight(.semibold)
+
+                        Text("\(SensitiveAppManager.defaultSensitiveApps.count) password managers and sensitive apps are detected by default")
                             .swiftClipCaption()
                             .foregroundColor(.swiftClipTextSecondary)
                     }

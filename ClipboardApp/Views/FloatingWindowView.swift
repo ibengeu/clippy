@@ -7,6 +7,7 @@ struct FloatingWindowView: View {
     @State private var hideTimer: Timer?
     @State private var searchText: String = ""
     @State private var selectedIndex: Int = 0
+    @State private var showPasteModeMenu: Bool = false
     @Binding var isVisible: Bool
 
     var body: some View {
@@ -211,6 +212,25 @@ struct FloatingWindowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                Button(action: {
+                    historyManager.incrementAccessCount(for: item.id)
+                    historyManager.updateLastAccessed(for: item.id)
+                    copyAndPaste(item.content, mode: .withFormatting)
+                    hideWindow()
+                }) {
+                    Label("Paste with Formatting", systemImage: "doc.richtext")
+                }
+
+                Button(action: {
+                    historyManager.incrementAccessCount(for: item.id)
+                    historyManager.updateLastAccessed(for: item.id)
+                    copyAndPaste(item.content, mode: .plainText)
+                    hideWindow()
+                }) {
+                    Label("Paste as Plain Text", systemImage: "doc.plaintext")
+                }
+            }
 
             // Pin/Unpin button
             Button(action: {
@@ -266,9 +286,12 @@ struct FloatingWindowView: View {
         NSPasteboard.general.setString(text, forType: .string)
     }
 
-    private func copyAndPaste(_ text: String) {
-        // First, copy the text to clipboard
-        copyToClipboard(text)
+    private func copyAndPaste(_ text: String, mode: PasteMode = .withFormatting) {
+        // Prepare text based on paste mode
+        let preparedText = StringFormatter.prepareForPaste(text, mode: mode)
+
+        // Copy the prepared text to clipboard
+        copyToClipboard(preparedText)
 
         // Delay to ensure clipboard is updated and focus returns to previous app
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
