@@ -103,6 +103,7 @@ final class MainViewModel: ObservableObject {
     func pinItem(_ item: ClipboardItem) {
         item.pin()
         store.update(item)
+        saveItems() // Immediate save to persist across crashes
         items = store.getAllItems()
         applyFiltersAndSearch()
     }
@@ -110,6 +111,7 @@ final class MainViewModel: ObservableObject {
     func unpinItem(_ item: ClipboardItem) {
         item.unpin()
         store.update(item)
+        saveItems() // Immediate save to persist across crashes
         items = store.getAllItems()
         applyFiltersAndSearch()
     }
@@ -117,6 +119,7 @@ final class MainViewModel: ObservableObject {
     func togglePin(_ item: ClipboardItem) {
         item.togglePin()
         store.update(item)
+        saveItems() // Immediate save to persist across crashes
         items = store.getAllItems()
         applyFiltersAndSearch()
     }
