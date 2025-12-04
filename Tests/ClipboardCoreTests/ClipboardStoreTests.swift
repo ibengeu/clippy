@@ -322,6 +322,77 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertTrue(pinned.allSatisfy { $0.isPinned })
     }
 
+    // MARK: - Pinned Item Persistence Tests
+
+    func testPinnedItemPersistsAcrossSaveLoad() throws {
+        // Given: Store with a pinned item
+        let item = ClipboardItem(content: "Test", type: .text, sourceApp: "Test")
+        item.pin()
+        store.add(item)
+
+        // When: Save and load in new store
+        try store.save()
+        let newStore = ClipboardStore(storageURL: store.storageURL)
+        try newStore.load()
+
+        // Then: isPinned should be true
+        let loadedItems = newStore.getAllItems()
+        XCTAssertEqual(loadedItems.count, 1)
+        XCTAssertTrue(loadedItems[0].isPinned, "Pinned item should remain pinned after save/load cycle")
+    }
+
+    func testMultiplePinnedItemsPersist() throws {
+        // Given: 3 items, 2 pinned, 1 unpinned
+        let item1 = ClipboardItem(content: "Pinned 1", type: .text, sourceApp: "Test")
+        let item2 = ClipboardItem(content: "Not pinned", type: .text, sourceApp: "Test")
+        let item3 = ClipboardItem(content: "Pinned 2", type: .text, sourceApp: "Test")
+
+        item1.pin()
+        item3.pin()
+
+        store.add(item1)
+        store.add(item2)
+        store.add(item3)
+
+        // When: Save and load
+        try store.save()
+        let newStore = ClipboardStore(storageURL: store.storageURL)
+        try newStore.load()
+
+        // Then: Correct items should be pinned
+        let loaded = newStore.getAllItems()
+        XCTAssertEqual(loaded.count, 3)
+
+        let pinnedCount = loaded.filter { $0.isPinned }.count
+        XCTAssertEqual(pinnedCount, 2, "Exactly 2 items should remain pinned after save/load cycle")
+
+        // Verify specific items
+        let pinnedContents = loaded.filter { $0.isPinned }.map { $0.content }
+        XCTAssertTrue(pinnedContents.contains("Pinned 1"))
+        XCTAssertTrue(pinnedContents.contains("Pinned 2"))
+    }
+
+    func testUnpinningItemPersists() throws {
+        // Given: Pinned item
+        let item = ClipboardItem(content: "Test", type: .text, sourceApp: "Test")
+        item.pin()
+        store.add(item)
+        try store.save()
+
+        // When: Unpin and save again
+        item.unpin()
+        store.update(item)
+        try store.save()
+
+        let newStore = ClipboardStore(storageURL: store.storageURL)
+        try newStore.load()
+
+        // Then: Should not be pinned
+        let loaded = newStore.getAllItems()
+        XCTAssertEqual(loaded.count, 1)
+        XCTAssertFalse(loaded[0].isPinned, "Unpinned item should remain unpinned after save/load cycle")
+    }
+
     // MARK: - Contains Tests
 
     func testContainsItem() throws {
