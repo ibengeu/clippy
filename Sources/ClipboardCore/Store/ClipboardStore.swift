@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Thread-safe in-memory and persistent storage for clipboard items
 public final class ClipboardStore {
@@ -11,6 +12,10 @@ public final class ClipboardStore {
     public let storageURL: URL
     public var maxItems: Int = 300
     public var autoSave: Bool = false
+
+    // Encryption properties
+    private var encryptionKey: SymmetricKey?
+    private let encryptionService = EncryptionService()
 
     public var count: Int {
         queue.sync { items.count }
@@ -155,6 +160,13 @@ public final class ClipboardStore {
                 }
             }
         }
+    }
+
+    // MARK: - Encryption
+
+    /// Enables encryption with the provided key
+    public func enableEncryption(with key: SymmetricKey) {
+        self.encryptionKey = key
     }
 
     // MARK: - Persistence
