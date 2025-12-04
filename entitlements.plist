@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Required for global hotkey registration via Carbon Event Manager -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+
+	<!-- File system access for clipboard data storage in Application Support -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+
+	<!-- Note: App sandbox disabled for MVP to allow global hotkey registration -->
+	<!-- Future version may enable sandbox with appropriate exceptions -->
+	<!-- <key>com.apple.security.app-sandbox</key>
+	<true/> -->
+
+	<!-- Allow JIT compilation for Swift runtime -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+
+	<!-- Disable library validation for development -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>
